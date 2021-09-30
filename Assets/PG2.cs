@@ -8,14 +8,12 @@ using Random = System.Random;
 
 public class PG2 : MonoBehaviour
 {
-    private float time = 0.0f;
     Mesh mesh;
     int[] triangles;
     private GameObject[] agents;
     private int firstAgentVertext = -1;
-    private MoveType moveType;
+    private MoveType moveType = MoveType.BORDER;
     private Vector3[] midways = null;
-    private Vector3[] rotateDestination = null;
     private float toRotate = 180f;
     [SerializeField] private Slider agentSlider;
 
@@ -186,7 +184,6 @@ public class PG2 : MonoBehaviour
             Vector3 target = midways[i];
             if (thisAgent.transform.position == target)
             {
-                setRotateDestination();
                 toRotate = 180f;
                 moveType = MoveType.ROTATE;
             }
@@ -197,30 +194,8 @@ public class PG2 : MonoBehaviour
         }          
     }
 
-    void setRotateDestination()
-    {
-        rotateDestination = new Vector3[agents.Length];
-        Vector3[] vertices = GetComponent<MeshFilter>().mesh.vertices;
-        if (agents == null || vertices == null)
-        {
-            return;
-        }
-
-        Vector3 pivot = GetComponent<MeshFilter>().transform.position;
-        for(int i =0;i<agents.Length; i++)
-        {
-            GameObject thisAgent = agents[i];
-            Vector3 angle = new Vector3(0, 0, 180);
-            rotateDestination[i] = RotatePointAroundPivot(thisAgent.transform.position, pivot, angle);
-        }          
-    }
-    
     void move()
     {
-        if (moveType == null)
-        {
-            return;   
-        }
         Debug.Log(moveType);
         if (moveType == MoveType.BORDER)
         {
@@ -259,7 +234,6 @@ public class PG2 : MonoBehaviour
         {
             GameObject thisAgent = agents[i];
             Vector3 thisAgentPosition = thisAgent.transform.position;
-            Vector3 target = rotateDestination[i];
             Vector3 angle = new Vector3(0, 0, 1);
             Vector3 direction = RotatePointAroundPivot(thisAgentPosition, pivot, angle);
             thisAgent.transform.position = Vector3.MoveTowards(thisAgentPosition, direction, Time.deltaTime);  
