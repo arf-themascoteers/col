@@ -8,9 +8,9 @@ public class PG2 : MonoBehaviour
 {
     private float time = 0.0f;
     Mesh mesh;
-    Vector3[] vertices;
     int[] triangles;
     private GameObject[] agents;
+    private int firstAgentVertext = -1;
 
     [SerializeField] private Slider agentSlider;
 
@@ -24,21 +24,12 @@ public class PG2 : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        time += Time.deltaTime;
- 
-        if (time >= 0.3f) {
-            time = 0.0f;
- 
-            //Debug.Log(Input.mousePosition);
-        }
+        moveAcrossBorder();
     }
 
     void UpdateMesh()
     {
-        mesh.Clear();
-        mesh.vertices = vertices;
-        mesh.triangles = triangles;
-        mesh.RecalculateNormals();
+
     }
 
     public void DrawPolygon()
@@ -94,12 +85,46 @@ public class PG2 : MonoBehaviour
         {
             Vector3 vertex = vertices[i];
             Vector3 worldPt = GetComponent<MeshFilter>().transform.TransformPoint(vertex);
-            Debug.Log(worldPt);
             agents[i] = Instantiate(agent);
             agents[i].transform.position = worldPt;
             agents[i].SetActive(true);
         }
-        print(agents);
+
+        firstAgentVertext = -1;
+    }
+
+    void moveAcrossBorder()
+    {
+        Vector3[] vertices = GetComponent<MeshFilter>().mesh.vertices;
+        if (agents == null || vertices == null)
+        {
+            return;
+        }
+
+        if (firstAgentVertext == -1)
+        {
+            firstAgentVertext = agents.Length - 1;
+        }
+        
+        for(int i =0;i<agents.Length; i++)
+        {
+            GameObject thisAgent = agents[i];
+            int targetVertex = (firstAgentVertext + i)%agents.Length;
+            Vector3 target = vertices[targetVertex];
+            target = GetComponent<MeshFilter>().transform.TransformPoint(target);
+            if (thisAgent.transform.position == target)
+            {
+                firstAgentVertext--;
+                if (firstAgentVertext < 0)
+                {
+                    firstAgentVertext = agents.Length - 1;
+                }
+            }
+            else
+            {
+                thisAgent.transform.position = Vector3.MoveTowards(thisAgent.transform.position, target, Time.deltaTime);                
+            }
+        }
     }
     
     Vector3 RotatePointAroundPivot(Vector3 point, Vector3 pivot, Vector3 angles)
