@@ -1,3 +1,7 @@
+**How to run**
+
+Open the project in Unity and run SampleScene.
+
 **Quick Demo**
 
 https://youtu.be/CZ8wyYlgeC8
