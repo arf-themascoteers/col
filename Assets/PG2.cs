@@ -1,8 +1,10 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using DefaultNamespace;
 using UnityEngine;
 using UnityEngine.UI;
+using Random = System.Random;
 
 public class PG2 : MonoBehaviour
 {
@@ -11,10 +13,33 @@ public class PG2 : MonoBehaviour
     int[] triangles;
     private GameObject[] agents;
     private int firstAgentVertext = -1;
-
+    private MoveType moveType;
+    private Vector3[] midways = null;
+    private Vector3[] rotateDestination = null;
     [SerializeField] private Slider agentSlider;
 
     [SerializeField] private GameObject agent;
+
+    private Color[] colors = new Color[]
+    {
+        Color.cyan, Color.magenta, Color.red, Color.yellow, Color.black, 
+        Color.blue, Color.green, Color.white, Color.gray, new Color(100,200, 0), 
+        new Color(randomColorInt(),randomColorInt(), randomColorInt()),
+        new Color(randomColorInt(),randomColorInt(), randomColorInt()),
+        new Color(randomColorInt(),randomColorInt(), randomColorInt()),
+        new Color(randomColorInt(),randomColorInt(), randomColorInt()),
+        new Color(randomColorInt(),randomColorInt(), randomColorInt()),
+        new Color(randomColorInt(),randomColorInt(), randomColorInt()),
+        new Color(randomColorInt(),randomColorInt(), randomColorInt()),
+        new Color(randomColorInt(),randomColorInt(), randomColorInt()),
+        new Color(randomColorInt(),randomColorInt(), randomColorInt()),
+        new Color(randomColorInt(),randomColorInt(), randomColorInt()),
+        new Color(randomColorInt(),randomColorInt(), randomColorInt()),
+        new Color(randomColorInt(),randomColorInt(), randomColorInt()),
+        new Color(randomColorInt(),randomColorInt(), randomColorInt())
+
+    };
+    
     // Start is called before the first frame update
     void Start()
     {
@@ -24,7 +49,7 @@ public class PG2 : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        moveAcrossBorder();
+        move();
     }
 
     void UpdateMesh()
@@ -87,13 +112,18 @@ public class PG2 : MonoBehaviour
             Vector3 worldPt = GetComponent<MeshFilter>().transform.TransformPoint(vertex);
             agents[i] = Instantiate(agent);
             agents[i].transform.position = worldPt;
+            int r = (int)UnityEngine.Random.Range(0, 255);
+            int g = (int)UnityEngine.Random.Range(0, 255);
+            int b = (int)UnityEngine.Random.Range(0, 255);
+            agents[i].GetComponent<Renderer>().material.color = colors[i];
             agents[i].SetActive(true);
         }
 
         firstAgentVertext = -1;
+        moveType = MoveType.BORDER;
     }
 
-    void moveAcrossBorder()
+    void moveBorder()
     {
         Vector3[] vertices = GetComponent<MeshFilter>().mesh.vertices;
         if (agents == null || vertices == null)
@@ -114,18 +144,149 @@ public class PG2 : MonoBehaviour
             target = GetComponent<MeshFilter>().transform.TransformPoint(target);
             if (thisAgent.transform.position == target)
             {
-                firstAgentVertext--;
-                if (firstAgentVertext < 0)
-                {
-                    firstAgentVertext = agents.Length - 1;
-                }
+                firstAgentVertext = (firstAgentVertext + (agents.Length / 2)) % agents.Length;
+                setMidways();
+                moveType = MoveType.CENTER;
             }
             else
             {
                 thisAgent.transform.position = Vector3.MoveTowards(thisAgent.transform.position, target, Time.deltaTime);                
             }
+        }        
+    }
+
+    void setMidways()
+    {
+        midways = new Vector3[agents.Length];
+        Vector3[] vertices = GetComponent<MeshFilter>().mesh.vertices;
+        if (agents == null || vertices == null)
+        {
+            return;
+        }
+
+        Vector3 target = GetComponent<MeshFilter>().transform.position;
+        for(int i =0;i<agents.Length; i++)
+        {
+            GameObject thisAgent = agents[i];
+            midways[i] = Vector3.Lerp(thisAgent.transform.position, target, 0.7f);
+        }        
+    }
+
+    void moveCenter()
+    {
+        Vector3[] vertices = GetComponent<MeshFilter>().mesh.vertices;
+        if (agents == null || vertices == null)
+        {
+            return;
+        }        
+        for(int i =0;i<agents.Length; i++)
+        {
+            GameObject thisAgent = agents[i];
+            Vector3 target = midways[i];
+            if (thisAgent.transform.position == target)
+            {
+                setRotateDestination();
+                moveType = MoveType.ROTATE;
+            }
+            else
+            {
+                thisAgent.transform.position = Vector3.MoveTowards(thisAgent.transform.position, target, Time.deltaTime);                
+            }
+        }          
+    }
+
+    void setRotateDestination()
+    {
+        rotateDestination = new Vector3[agents.Length];
+        Vector3[] vertices = GetComponent<MeshFilter>().mesh.vertices;
+        if (agents == null || vertices == null)
+        {
+            return;
+        }
+
+        Vector3 pivot = GetComponent<MeshFilter>().transform.position;
+        for(int i =0;i<agents.Length; i++)
+        {
+            GameObject thisAgent = agents[i];
+            Vector3 angle = new Vector3(0, 0, 180);
+            rotateDestination[i] = RotatePointAroundPivot(thisAgent.transform.position, pivot, angle);
+        }          
+    }
+    
+    void move()
+    {
+        if (moveType == null)
+        {
+            return;   
+        }
+        Debug.Log(moveType);
+        if (moveType == MoveType.BORDER)
+        {
+            moveBorder();
+        }
+        else if (moveType == MoveType.CENTER)
+        {
+            moveCenter();
+        }
+        else if (moveType == MoveType.ROTATE)
+        {
+            moveRotation();
+        }
+        else//CORNER
+        {
+            moveCorner();
         }
     }
+
+    void moveRotation()
+    {
+        Vector3[] vertices = GetComponent<MeshFilter>().mesh.vertices;
+        if (agents == null || vertices == null)
+        {
+            return;
+        }
+
+        Vector3 center = GetComponent<MeshFilter>().transform.position;
+        for(int i =0;i<agents.Length; i++)
+        {
+            GameObject thisAgent = agents[i];
+            Vector3 target = rotateDestination[i];
+            if (thisAgent.transform.position == target)
+            {
+                moveType = MoveType.CORNER;
+            }
+            else
+            {
+                thisAgent.transform.RotateAround(center,Vector3.forward, 180);                
+            }
+        }         
+    }
+    
+    void moveCorner()
+    {
+        Vector3[] vertices = GetComponent<MeshFilter>().mesh.vertices;
+        if (agents == null || vertices == null)
+        {
+            return;
+        }
+
+        for(int i =0;i<agents.Length; i++)
+        {
+            GameObject thisAgent = agents[i];
+            int targetVertex = (firstAgentVertext + i)%agents.Length;
+            Vector3 target = vertices[targetVertex];
+            target = GetComponent<MeshFilter>().transform.TransformPoint(target);
+            if (thisAgent.transform.position == target)
+            {
+                firstAgentVertext = (firstAgentVertext + (agents.Length / 2)) % agents.Length;
+                moveType = MoveType.BORDER;
+            }
+            else
+            {
+                thisAgent.transform.position = Vector3.MoveTowards(thisAgent.transform.position, target, Time.deltaTime);                
+            }
+        }          
+    }    
     
     Vector3 RotatePointAroundPivot(Vector3 point, Vector3 pivot, Vector3 angles)
     {
@@ -133,5 +294,10 @@ public class PG2 : MonoBehaviour
         dir = Quaternion.Euler(angles) * dir;
         Vector3 dest = dir + pivot;
         return dest;
+    }
+
+    static int randomColorInt()
+    {
+        return (int) (new Random().Next(255));
     }
 }
