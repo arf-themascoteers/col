@@ -11,18 +11,19 @@ public class Synchroniser : MonoBehaviour
     Mesh mesh;
     int[] triangles;
     private GameObject[] agents;
-    private int firstAgentVertext = -1;
+    private int targetVertexForFirstAgent = -1;
     private MoveType moveType = MoveType.BORDER;
-    private Vector3[] midways = null;
+    private Vector3[] pointsOnInnerCircle = null;
     private float toRotate = 180f;
     [SerializeField] private Slider agentSlider;
-
+    [SerializeField] private Slider innerSlider;
     [SerializeField] private GameObject agent;
-
+    private float innerRadiusMultiplier = 1;
+    
     private Color[] colors = new Color[]
     {
         Color.cyan, Color.magenta, Color.red, Color.yellow, Color.black, 
-        Color.blue, Color.green, Color.white, Color.gray, new Color(100,200, 0), 
+        Color.blue, Color.green, Color.white, Color.gray, new Color(0,100, 100),  
         new Color(56,200, 0), new Color(50,150, 50), new Color(100,0, 0), new Color(0,200, 0), 
         new Color(100,200, 56), new Color(0,0, 200), new Color(0,0, 255), new Color(0,200, 80),
         new Color(14,167, 55), new Color(0,156, 67), new Color(2,32, 0), new Color(32,200, 40)
@@ -38,18 +39,40 @@ public class Synchroniser : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        move();
+        Move();
     }
 
-    void UpdateMesh()
+    float GetPolygonRadius()
     {
+        Vector3 firstVertex = GetVertices()[0];
+        Vector3 worldPt = GetComponent<MeshFilter>().transform.TransformPoint(firstVertex);        
+        return Vector3.Distance(worldPt, GetCenter());
+    }
 
+    float GetAgentRadius()
+    {
+        return agents[0].GetComponent<SphereCollider>().radius * agents[0].transform.transform.localScale.x;        
+    }
+
+    Vector3 GetCenter()
+    {
+        return GetComponent<MeshFilter>().transform.position;
+    }
+
+    int GetSides()
+    {
+        return (int)(agentSlider.value);
+    }
+
+    Vector3[] GetVertices()
+    {
+        return GetComponent<MeshFilter>().mesh.vertices;
     }
 
     public void DrawPolygon()
     {
-        int sides = (int)(agentSlider.value);
-        Vector3[] vertices = GetComponent<MeshFilter>().mesh.vertices;
+        int sides = GetSides(); 
+        Vector3[] vertices = GetVertices();
         mesh = new Mesh();
         GetComponent<MeshFilter>().mesh = mesh;
         mesh.Clear();
@@ -80,7 +103,15 @@ public class Synchroniser : MonoBehaviour
         mesh.vertices = vertices;
         mesh.triangles = triangles;
         CreateAgents();
+        innerSlider.minValue = 1;
+        innerSlider.maxValue = (GetPolygonRadius() / GetInnerRadius()) / 2;
+        innerSlider.value = innerSlider.minValue;
         mesh.RecalculateNormals();
+    }
+
+    public void AdjustBoundingBox()
+    {
+        innerRadiusMultiplier = innerSlider.value;
     }
 
     void CreateAgents()
@@ -105,33 +136,29 @@ public class Synchroniser : MonoBehaviour
             agents[i].SetActive(true);
         }
 
-        firstAgentVertext = -1;
+        targetVertexForFirstAgent = -1;
         moveType = MoveType.BORDER;
     }
 
-    void moveBorder()
+    void MoveAlongBorder()
     {
-        Vector3[] vertices = GetComponent<MeshFilter>().mesh.vertices;
-        if (agents == null || vertices == null)
-        {
-            return;
-        }
+        Vector3[] vertices = GetVertices();
 
-        if (firstAgentVertext == -1)
+        if (targetVertexForFirstAgent == -1)//This is the start
         {
-            firstAgentVertext = agents.Length - 1;
+            targetVertexForFirstAgent = agents.Length - 1;
         }
         
         for(int i =0;i<agents.Length; i++)
         {
             GameObject thisAgent = agents[i];
-            int targetVertex = (firstAgentVertext + i)%agents.Length;
+            int targetVertex = (targetVertexForFirstAgent + i)%agents.Length;
             Vector3 target = vertices[targetVertex];
             target = GetComponent<MeshFilter>().transform.TransformPoint(target);
             if (thisAgent.transform.position == target)
             {
-                firstAgentVertext = (firstAgentVertext + (agents.Length / 2)) % agents.Length;
-                setMidways();
+                targetVertexForFirstAgent = (targetVertexForFirstAgent + (agents.Length / 2)) % agents.Length;
+                SetBoundinBox();
                 moveType = MoveType.CENTER;
             }
             else
@@ -141,39 +168,39 @@ public class Synchroniser : MonoBehaviour
         }        
     }
 
-    void setMidways()
+    void SetBoundinBox()
     {
-        midways = new Vector3[agents.Length];
+        pointsOnInnerCircle = new Vector3[agents.Length];
         Vector3[] vertices = GetComponent<MeshFilter>().mesh.vertices;
         if (agents == null || vertices == null)
         {
             return;
         }
 
-        Vector3 target = GetComponent<MeshFilter>().transform.position;
+        Vector3 target = GetCenter();
         for(int i =0;i<agents.Length; i++)
         {
             GameObject thisAgent = agents[i];
             Vector3 thisAgentPosition = thisAgent.transform.position;
-            //midways[i] = Vector3.Lerp(thisAgentPosition, target, 0.7f);
-            float radius = thisAgent.GetComponent<SphereCollider>().radius * thisAgent.transform.transform.localScale.x;
-            float innerRadius = (agents.Length * radius ) / (float)Math.PI;
+            float innerRadius = GetInnerRadius() * innerRadiusMultiplier;
             Vector3 direction = (thisAgentPosition - target).normalized;
-            midways[i] = direction * innerRadius;
+            pointsOnInnerCircle[i] = direction * innerRadius;
         }        
     }
 
-    void moveCenter()
+    float GetInnerRadius()
     {
-        Vector3[] vertices = GetComponent<MeshFilter>().mesh.vertices;
-        if (agents == null || vertices == null)
-        {
-            return;
-        }        
+        float radius = GetAgentRadius();
+        return (agents.Length * radius ) / (float)Math.PI;
+    }
+
+    void MoveTowardCenter()
+    {
+        Vector3[] vertices = GetVertices();
         for(int i =0;i<agents.Length; i++)
         {
             GameObject thisAgent = agents[i];
-            Vector3 target = midways[i];
+            Vector3 target = pointsOnInnerCircle[i];
             if (thisAgent.transform.position == target)
             {
                 toRotate = 180f;
@@ -186,36 +213,35 @@ public class Synchroniser : MonoBehaviour
         }          
     }
 
-    void move()
+    void Move()
     {
         Debug.Log(moveType);
+        if (agents == null || GetVertices() == null)
+        {
+            return;
+        }        
         if (moveType == MoveType.BORDER)
         {
-            moveBorder();
+            MoveAlongBorder();
         }
         else if (moveType == MoveType.CENTER)
         {
-            moveCenter();
+            MoveTowardCenter();
         }
         else if (moveType == MoveType.ROTATE)
         {
-            moveRotation();
+            MoveByRotation();
         }
         else//CORNER
         {
-            moveCorner();
+            MoveTowardCorner();
         }
     }
 
-    void moveRotation()
+    void MoveByRotation()
     {
-        Vector3[] vertices = GetComponent<MeshFilter>().mesh.vertices;
-        Vector3 pivot = GetComponent<MeshFilter>().transform.position;
-        if (agents == null || vertices == null)
-        {
-            return;
-        }
-
+        Vector3 pivot = GetCenter();
+        float rotationPerPass = 0.2f;
         if (toRotate <= 0)
         {
             moveType = MoveType.CORNER;
@@ -226,15 +252,15 @@ public class Synchroniser : MonoBehaviour
         {
             GameObject thisAgent = agents[i];
             Vector3 thisAgentPosition = thisAgent.transform.position;
-            Vector3 angle = new Vector3(0, 0, 0.2f);
+            Vector3 angle = new Vector3(0, 0, rotationPerPass);
             Vector3 direction = RotatePointAroundPivot(thisAgentPosition, pivot, angle);
             thisAgent.transform.position = Vector3.MoveTowards(thisAgentPosition, direction, Time.deltaTime*10);  
         }
 
-        toRotate = toRotate - 0.2f;
+        toRotate = toRotate - rotationPerPass;
     }
     
-    void moveCorner()
+    void MoveTowardCorner()
     {
         Vector3[] vertices = GetComponent<MeshFilter>().mesh.vertices;
         if (agents == null || vertices == null)
@@ -245,15 +271,15 @@ public class Synchroniser : MonoBehaviour
         for(int i =0;i<agents.Length; i++)
         {
             GameObject thisAgent = agents[i];
-            int targetVertex = (firstAgentVertext + i)%agents.Length;
+            int targetVertex = (targetVertexForFirstAgent + i)%agents.Length;
             Vector3 target = vertices[targetVertex];
             target = GetComponent<MeshFilter>().transform.TransformPoint(target);
             if (thisAgent.transform.position == target)
             {
-                firstAgentVertext = firstAgentVertext - 1;
-                if (firstAgentVertext < 0)
+                targetVertexForFirstAgent = targetVertexForFirstAgent - 1;
+                if (targetVertexForFirstAgent < 0)
                 {
-                    firstAgentVertext = agents.Length - 1;
+                    targetVertexForFirstAgent = agents.Length - 1;
                 }    
                 moveType = MoveType.BORDER;
             }
@@ -272,8 +298,4 @@ public class Synchroniser : MonoBehaviour
         return dest;
     }
 
-    static int randomColorInt()
-    {
-        return (int) (new Random().Next(255));
-    }
 }
