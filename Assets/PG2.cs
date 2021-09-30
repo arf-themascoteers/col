@@ -23,19 +23,9 @@ public class PG2 : MonoBehaviour
     {
         Color.cyan, Color.magenta, Color.red, Color.yellow, Color.black, 
         Color.blue, Color.green, Color.white, Color.gray, new Color(100,200, 0), 
-        new Color(randomColorInt(),randomColorInt(), randomColorInt()),
-        new Color(randomColorInt(),randomColorInt(), randomColorInt()),
-        new Color(randomColorInt(),randomColorInt(), randomColorInt()),
-        new Color(randomColorInt(),randomColorInt(), randomColorInt()),
-        new Color(randomColorInt(),randomColorInt(), randomColorInt()),
-        new Color(randomColorInt(),randomColorInt(), randomColorInt()),
-        new Color(randomColorInt(),randomColorInt(), randomColorInt()),
-        new Color(randomColorInt(),randomColorInt(), randomColorInt()),
-        new Color(randomColorInt(),randomColorInt(), randomColorInt()),
-        new Color(randomColorInt(),randomColorInt(), randomColorInt()),
-        new Color(randomColorInt(),randomColorInt(), randomColorInt()),
-        new Color(randomColorInt(),randomColorInt(), randomColorInt()),
-        new Color(randomColorInt(),randomColorInt(), randomColorInt())
+        new Color(56,200, 0), new Color(50,150, 50), new Color(100,0, 0), new Color(0,200, 0), 
+        new Color(100,200, 56), new Color(0,0, 200), new Color(0,0, 255), new Color(0,200, 80),
+        new Color(14,167, 55), new Color(0,156, 67), new Color(2,32, 0), new Color(32,200, 40)
 
     };
     
@@ -164,7 +154,12 @@ public class PG2 : MonoBehaviour
         for(int i =0;i<agents.Length; i++)
         {
             GameObject thisAgent = agents[i];
-            midways[i] = Vector3.Lerp(thisAgent.transform.position, target, 0.7f);
+            Vector3 thisAgentPosition = thisAgent.transform.position;
+            //midways[i] = Vector3.Lerp(thisAgentPosition, target, 0.7f);
+            float radius = thisAgent.GetComponent<SphereCollider>().radius * thisAgent.transform.transform.localScale.x;
+            float innerRadius = (agents.Length * radius ) / (float)Math.PI;
+            Vector3 direction = (thisAgentPosition - target).normalized;
+            midways[i] = direction * innerRadius;
         }        
     }
 
