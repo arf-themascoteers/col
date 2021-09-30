@@ -16,6 +16,7 @@ public class PG2 : MonoBehaviour
     private MoveType moveType;
     private Vector3[] midways = null;
     private Vector3[] rotateDestination = null;
+    private float toRotate = 180f;
     [SerializeField] private Slider agentSlider;
 
     [SerializeField] private GameObject agent;
@@ -186,6 +187,7 @@ public class PG2 : MonoBehaviour
             if (thisAgent.transform.position == target)
             {
                 setRotateDestination();
+                toRotate = 180f;
                 moveType = MoveType.ROTATE;
             }
             else
@@ -241,25 +243,29 @@ public class PG2 : MonoBehaviour
     void moveRotation()
     {
         Vector3[] vertices = GetComponent<MeshFilter>().mesh.vertices;
+        Vector3 pivot = GetComponent<MeshFilter>().transform.position;
         if (agents == null || vertices == null)
         {
             return;
         }
 
-        Vector3 center = GetComponent<MeshFilter>().transform.position;
+        if (toRotate <= 0)
+        {
+            moveType = MoveType.CORNER;
+            return;
+        }
+        
         for(int i =0;i<agents.Length; i++)
         {
             GameObject thisAgent = agents[i];
+            Vector3 thisAgentPosition = thisAgent.transform.position;
             Vector3 target = rotateDestination[i];
-            if (thisAgent.transform.position == target)
-            {
-                moveType = MoveType.CORNER;
-            }
-            else
-            {
-                thisAgent.transform.RotateAround(center,Vector3.forward, 180);                
-            }
-        }         
+            Vector3 angle = new Vector3(0, 0, 1);
+            Vector3 direction = RotatePointAroundPivot(thisAgentPosition, pivot, angle);
+            thisAgent.transform.position = Vector3.MoveTowards(thisAgentPosition, direction, Time.deltaTime);  
+        }
+
+        toRotate = toRotate - 1;
     }
     
     void moveCorner()
@@ -278,7 +284,11 @@ public class PG2 : MonoBehaviour
             target = GetComponent<MeshFilter>().transform.TransformPoint(target);
             if (thisAgent.transform.position == target)
             {
-                firstAgentVertext = (firstAgentVertext + (agents.Length / 2)) % agents.Length;
+                firstAgentVertext = firstAgentVertext - 1;
+                if (firstAgentVertext < 0)
+                {
+                    firstAgentVertext = agents.Length - 1;
+                }    
                 moveType = MoveType.BORDER;
             }
             else
