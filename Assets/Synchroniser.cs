@@ -6,7 +6,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using Random = System.Random;
 
-public class PG2 : MonoBehaviour
+public class Synchroniser : MonoBehaviour
 {
     Mesh mesh;
     int[] triangles;
