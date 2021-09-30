@@ -111,9 +111,6 @@ public class PG2 : MonoBehaviour
             Vector3 worldPt = GetComponent<MeshFilter>().transform.TransformPoint(vertex);
             agents[i] = Instantiate(agent);
             agents[i].transform.position = worldPt;
-            int r = (int)UnityEngine.Random.Range(0, 255);
-            int g = (int)UnityEngine.Random.Range(0, 255);
-            int b = (int)UnityEngine.Random.Range(0, 255);
             agents[i].GetComponent<Renderer>().material.color = colors[i];
             agents[i].SetActive(true);
         }
@@ -234,12 +231,12 @@ public class PG2 : MonoBehaviour
         {
             GameObject thisAgent = agents[i];
             Vector3 thisAgentPosition = thisAgent.transform.position;
-            Vector3 angle = new Vector3(0, 0, 1);
+            Vector3 angle = new Vector3(0, 0, 0.2f);
             Vector3 direction = RotatePointAroundPivot(thisAgentPosition, pivot, angle);
-            thisAgent.transform.position = Vector3.MoveTowards(thisAgentPosition, direction, Time.deltaTime);  
+            thisAgent.transform.position = Vector3.MoveTowards(thisAgentPosition, direction, Time.deltaTime*10);  
         }
 
-        toRotate = toRotate - 1;
+        toRotate = toRotate - 0.2f;
     }
     
     void moveCorner()
